@@ -747,11 +747,12 @@ function standardLayoutMatches(){
   if(!isStandardRef())return false;
   const cs=getComputedStyle(E), fs=parseFloat(cs.fontSize)||0, lh=parseFloat(cs.lineHeight)||0;
   const targetLh=fs*1.42;
-  /* 2026-09-04：用户确认的117字唯一最佳排版就是 22px / 1.42 / 9%×8% / grid 竖向居中。
-     18px flex 是上一轮长按误回到的第二套“伪最佳”，不再承认。 */
-  return manualAlign==='justify' && (E.style.textAlign==='justify') && Math.abs(fs-22)<0.35 && Math.abs(lh-targetLh)<1.2 &&
-         (E.style.display==='grid') && (E.style.alignContent==='center') && (E.style.justifyContent==='stretch') &&
-         (E.style.padding==='9% 8%') && (E.style.overflowY==='hidden'||E.style.overflowY==='');
+  /* 唯一最佳排版判断只认真正影响画面的核心参数。
+     不再因为同一画面由 grid/flex 或旧版留白写法不同，就误判为“不是最佳”并再次重排。 */
+  const centered=(E.style.display==='grid'&&E.style.alignContent==='center') ||
+                 (E.style.display==='flex'&&E.style.justifyContent==='center');
+  return manualAlign==='justify' && E.style.textAlign==='justify' && Math.abs(fs-22)<0.35 &&
+         Math.abs(lh-targetLh)<1.2 && centered && E.scrollHeight<=E.clientHeight+2;
 }
 function applyStandardRefLayout(){
   const guard=E.innerHTML;
@@ -776,8 +777,8 @@ function applyStandardRefLayout(){
   E.classList.toggle('sp-underline-all',keepUnderline);E.style.textDecorationLine=keepUnderline?'underline':'none';
   E.style.textDecorationThickness=keepUnderline?'1px':'';E.style.textUnderlineOffset=keepUnderline?'.12em':'';
   if(E.innerHTML!==guard)E.innerHTML=guard;
-  /* 只有真的装不下时才向下收一档；正常117字基准不会触发。 */
-  let px=22;while(px>14 && E.scrollHeight>E.clientHeight+1){px--;E.style.fontSize=px+'px';fontSize=px}
+  /* 117字参照正文就是标尺本身：这里绝不再做二次“防溢出缩小”。
+     上一版正是这个循环把22px标准偷偷缩成了另一套较小排版。 */
   E.scrollTop=0;updateCounter();syncAll();
 }
 let aiBestSignature='';
@@ -797,23 +798,38 @@ function forceBestLayout(resetToCanonical=false){
   if(resetToCanonical||manualAlign==='justify')aiBestSignature=aiLayoutSignature();
   syncAI();return true;
 }
-let aiLongConsumed=false,aiLongTimer=0;
+function restoreDemoBestLayout(){
+  /* 长按AI只恢复示范文字的“版式标准”，保留客户已经选择的字体/颜色/B/I/U。 */
+  const keepFont=E.dataset.font||inferFont(getComputedStyle(E).fontFamily)||'song';
+  const keepColor=E.style.getPropertyValue('--sp-demo-color')||E.style.color||getComputedStyle(E).color||'#8f97a3';
+  const keepBold=E.classList.contains('sp-bold-all'),keepItalic=E.classList.contains('sp-italic-all'),keepUnderline=E.classList.contains('sp-underline-all');
+  restoring=true;demoMode=true;aiOn=false;manualAlign='justify';fontSize=18;
+  E.className='editor sp-demo';E.innerText=DEMO;E.dataset.font=keepFont;
+  E.style.cssText='';E.style.position='absolute';E.style.inset='0';E.style.boxSizing='border-box';
+  E.style.padding='9% 8%';E.style.overflow='hidden';E.style.whiteSpace='pre-wrap';E.style.wordBreak='break-word';
+  E.style.display='grid';E.style.alignContent='center';E.style.justifyContent='stretch';E.style.placeContent='center stretch';
+  E.style.fontSize='18px';E.style.lineHeight='1.62';E.style.textAlign='center';E.style.color=keepColor;E.style.setProperty('--sp-demo-color',keepColor);
+  setFontKind(keepFont);
+  E.classList.toggle('sp-bold-all',keepBold);E.style.fontWeight=keepBold?'900':'400';
+  E.classList.toggle('sp-italic-all',keepItalic);E.style.fontStyle=keepItalic?'italic':'normal';
+  E.classList.toggle('sp-underline-all',keepUnderline);E.style.textDecorationLine=keepUnderline?'underline':'none';
+  E.style.textDecorationThickness=keepUnderline?'1px':'';E.style.textUnderlineOffset=keepUnderline?'.12em':'';
+  E.scrollTop=0;restoring=false;updateCounter();syncAll();
+}
+let aiLongConsumed=false,aiLongTimer=0,aiSuppressClickUntil=0;
 B.ai?.addEventListener('pointerdown',()=>{
   aiLongConsumed=false;clearTimeout(aiLongTimer);
   aiLongTimer=setTimeout(()=>{
-    aiLongConsumed=true;
+    aiLongConsumed=true;aiSuppressClickUntil=Date.now()+900;
     B.ai.classList.add('sp-ai-press');setTimeout(()=>B.ai.classList.remove('sp-ai-press'),180);
-    if(demoMode){
-      /* 示范文字被A+/A-或其它工具改变后，长按AI必须真正回到示范文字标准态，而不是只报提示。 */
-      setDemo(false);E.scrollTop=0;aiFeedback('✓ 已是最佳排版');return;
-    }
+    if(demoMode){restoreDemoBestLayout();aiFeedback('✓ 已是最佳排版');return;}
     if(!(E.innerText||'').trim()){aiFeedback('请书写明信内容');return;}
-    forceBestLayout(true);aiFeedback('✓ 已是最佳排版');
+    forceBestLayout(true);aiBestSignature=aiLayoutSignature();aiFeedback('✓ 已是最佳排版');
   },700);
 },true);
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>B.ai?.addEventListener(ev,()=>clearTimeout(aiLongTimer),true));
 own(B.ai,()=>{
-  if(aiLongConsumed){aiLongConsumed=false;return;}
+  if(aiLongConsumed||Date.now()<aiSuppressClickUntil){aiLongConsumed=false;return;}
   B.ai.classList.add('sp-ai-press');setTimeout(()=>B.ai.classList.remove('sp-ai-press'),180);
   if(demoMode||!(E.innerText||'').trim()){aiFeedback('请书写明信内容');return;}
   const before=aiLayoutSignature();
@@ -1259,6 +1275,7 @@ window.SP_openWritingLibrary=openLibrary;
 /* 撤销提示回到右侧空白的中间位置：比上一版左移，既不挡说明，也不贴屏幕边。 */
 #spWritingToast{max-width:42vw!important;}
 </style>
+<script id="sp-writing-20260904-true-canonical-marker">/* true canonical: no standard shrink; demo long-press exact restore */</script>
 </body>
 </html>
 
