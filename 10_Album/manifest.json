@@ -1,0 +1,23 @@
+{
+  "name": "纪念明信片电子相册（开发版）",
+  "short_name": "纪念相册新版",
+  "description": "Smart Postcard 纪念明信片电子相册",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "portrait",
+  "background_color": "#B87922",
+  "theme_color": "#B87922",
+  "icons": [
+    {
+      "src": "./assets/seal/seal.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "/Smart-postcart-development/10_Album/"
+}
