@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Smart Postcard Photo Choice B source fix</title>
+<style>
+:root{--blue:#1f59db;--title:#3a2505;--text:#303030;--goldTop:#ffe8a8;--goldMid:#f1ca61;--goldBottom:#d39b29}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text)}
+body{overflow-y:auto;-webkit-overflow-scrolling:touch}.screen{display:none}.screen.active{display:block}
+.page{width:min(430px,100vw);margin:0 auto;min-height:100vh;background:#fff;padding:58px 22px 54px}
+.title{margin:0 0 40px;text-align:center;font-size:25px;line-height:1.18;font-weight:600;color:var(--title)}
+.info{margin:0 0 38px;text-align:center;font-size:16px;line-height:1.72;color:var(--text)}
+.legal{margin:0 0 40px;padding:19px 18px;border:1px solid rgba(130,96,28,.42);border-radius:22px;display:flex;gap:14px;align-items:flex-start;font-size:16px;line-height:1.62;color:#272727;background:#fff}
+.legal input{width:28px;height:28px;margin-top:3px;flex:none;accent-color:var(--blue)}
+.button{
+  width:82%;
+  height:60px;
+  margin:0 auto 42px;
+  border-radius:34px;
+  border:1px solid rgba(140,103,36,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(180deg,#ffe49b 0%, #e8be58 52%, #bf8f31 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.85),
+    inset 0 -2px 0 rgba(0,0,0,.18),
+    0 8px 18px rgba(0,0,0,.14);
+  color:var(--blue);
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.75),
+    0 -1px 0 rgba(0,0,0,.18);
+  font-size:19px;
+  font-weight:800;
+}
+.hint{margin:0;text-align:center;font-size:16px;line-height:1.72;color:var(--text)}
+@media(max-width:390px){.page{padding-top:52px;padding-left:20px;padding-right:20px}.title{font-size:24px;margin-bottom:38px}.info{font-size:15.5px;margin-bottom:36px}.legal{font-size:15.5px;margin-bottom:42px}.button{font-size:18.5px;height:58px;margin-bottom:40px}}
+.editor{width:min(430px,100vw);margin:0 auto;min-height:calc(100vh + 70px);background:#fff}
+.topbar{height:58px;display:grid;grid-template-columns:76px 1fr 76px;align-items:center;border-bottom:1px solid rgba(0,0,0,.07);background:#fff;position:sticky;top:0;z-index:10}
+.topbar button{border:0;background:transparent;color:#5a3a06;font-size:18px;font-weight:800}.topTitle{text-align:center;color:#3a2505;font-size:18px;font-weight:800}
+.editorBody{padding:16px 18px 28px}.sourceRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 auto 14px}
+.sourceBtn,.modeBtn{height:42px;border-radius:18px;border:1px solid rgba(145,112,42,.22);background:#fff;color:#5d4b2d;font-size:14px;font-weight:800}
+.sourceBtn.active,.modeBtn.active,.option.active{color:var(--blue);border-color:rgba(31,89,219,.35);background:linear-gradient(180deg,#fff7df,#f4cf6d)}
+.modeRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 auto 14px}
+.previewZone{display:block;max-width:520px;margin:0 auto 14px}
+.cropFrame{position:relative;width:100%;aspect-ratio:210/148;background:#f6f6f6;overflow:hidden;border:1px solid rgba(145,112,42,.25);border-radius:0;touch-action:none;box-shadow:0 12px 24px rgba(0,0,0,.07)}
+.cropViewport{position:absolute;inset:0;overflow:hidden;background:#f6f6f6;transition:none;outline:0 solid transparent}
+.cropFrame.whiteBorder .cropViewport{inset:6px;background:#fff;outline:1px solid rgba(85,85,85,.12)}
+.cropFrame.portrait{aspect-ratio:148/210;max-width:240px;margin:0 auto}
+.photoLayer{position:absolute;left:50%;top:50%;max-width:none;transform-origin:center center;user-select:none;-webkit-user-drag:none}
+.grid{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 33.1%,rgba(255,255,255,.46) 33.1%,rgba(255,255,255,.46) 33.6%,transparent 33.6%,transparent 66.1%,rgba(255,255,255,.46) 66.1%,rgba(255,255,255,.46) 66.6%,transparent 66.6%),linear-gradient(0deg,transparent 33.1%,rgba(255,255,255,.46) 33.1%,rgba(255,255,255,.46) 33.6%,transparent 33.6%,transparent 66.1%,rgba(255,255,255,.46) 66.1%,rgba(255,255,255,.46) 66.6%,transparent 66.6%)}
+.whiteBorder{background:#fff}.whiteBorder::after{content:"";position:absolute;inset:0;border:1px solid rgba(85,85,85,.10);pointer-events:none;z-index:5}
+.stampBox{display:none;text-align:center}.stampTitle{font-size:14px;font-weight:800;color:#65450f;margin-bottom:7px}.stampPreview{width:112px;height:78px;padding:2px;background:#fff;filter:drop-shadow(0 8px 12px rgba(0,0,0,.14));border:0;box-sizing:border-box}
+.stampInner{width:100%;height:100%;background:#eee center/cover no-repeat}
+.controlGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 auto 12px}.option{height:48px;border-radius:24px;border:1px solid rgba(145,112,42,.22);background:#fff;color:#4b3510;font-size:16px;font-weight:800}
+.sliderRow{display:grid;grid-template-columns:48px 1fr 42px;gap:8px;align-items:center;color:#5a3a06;font-weight:800;margin:8px 0}input[type=range]{width:100%;accent-color:#d39b29}
+.smallRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}.smallRow button{height:44px;border-radius:16px;border:1px solid rgba(145,112,42,.22);background:#fff;color:#4b3510;font-size:15px;font-weight:800}
+.msg{display:none;margin-top:8px;padding:10px 12px;border-radius:12px;background:#f8fbff;border:1px solid rgba(31,89,219,.18);color:var(--blue);font-size:14px}.hiddenInput{display:none}
+
+.sourceDialogMask{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:999;padding:22px}
+.sourceDialog{
+  width:min(380px,94vw);
+  background:#fff;
+  border-radius:24px;
+  border:1px solid rgba(145,112,42,.25);
+  box-shadow:0 18px 42px rgba(0,0,0,.20);
+  margin-top:34px;
+  padding:24px 18px 24px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.sourceDialogTitle{
+  text-align:center;
+  color:#3a2505;
+  font-size:20px;
+  font-weight:800;
+  margin:0 0 20px;
+}
+.sourceDialogGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  width:100%;
+  margin:0 0 20px;
+}
+.sourceDialogBtn{height:82px;border-radius:20px;border:1px solid rgba(145,112,42,.24);background:#fff;color:#4b3510;font-size:15px;font-weight:800}
+.sourceDialogBtn .icon{display:block;font-size:28px;margin-bottom:7px}
+.sourceDialogClose{
+  display:block;
+  margin:0 auto;
+  width:118px;
+  height:36px;
+  border-radius:24px;
+  border:1px solid rgba(140,103,36,.45);
+  background:linear-gradient(180deg,#ffe49b 0%, #e8be58 52%, #bf8f31 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.85),
+    inset 0 -2px 0 rgba(0,0,0,.18),
+    0 8px 18px rgba(0,0,0,.14);
+  color:#2f2f2f;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.75),
+    0 -1px 0 rgba(0,0,0,.18);
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:0;
+  padding:0;
+}
+
+
+.sourceDialogNote{
+  margin:0 auto 20px;
+  line-height:1.24;
+  font-size:12px;
+  color:#2357d7;
+  text-align:center;
+  font-weight:600;
+  letter-spacing:0;
+  width:84%;
+}
+.candidateMask,.decisionMask{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:1000;padding:22px}
+.candidatePanel,.decisionPanel{width:min(380px,94vw);background:#fff;border-radius:24px;padding:24px 18px 20px;border:1px solid rgba(145,112,42,.25);box-shadow:0 18px 42px rgba(0,0,0,.20)}
+.candidateTitle,.decisionTitle{text-align:center;color:#3a2505;font-size:20px;font-weight:800;margin-bottom:14px}.candidateHelp{color:#555;font-size:14px;line-height:1.62;text-align:center;margin:0 8px 14px}
+.candidateList{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:78px;margin:10px 0 14px}.candidateEmpty{grid-column:1/4;border:1px dashed rgba(145,112,42,.35);border-radius:16px;padding:18px 8px;color:#777;font-size:14px;line-height:1.55;text-align:center;background:#fffdf7}
+.candidateThumb{aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid rgba(145,112,42,.25);background:#eee}.candidateThumb img{width:100%;height:100%;object-fit:cover;display:block}
+.decisionButtons{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}.decisionButtons button{min-height:46px;border-radius:18px;border:1px solid rgba(145,112,42,.25);background:#fff;color:#4b3510;font-size:15px;font-weight:800}.decisionButtons button.primary{color:var(--blue);background:linear-gradient(180deg,#fff7df,#f4cf6d)}
+
+.aiScreen{
+  width:min(430px,100vw);
+  margin:0 auto;
+  min-height:100vh;
+  background:#fff;
+  padding:42px 20px 42px;
+}
+.aiTitle{
+  text-align:center;
+  color:#3a2505;
+  font-size:22px;
+  font-weight:800;
+  line-height:1.28;
+  margin:0 0 28px;
+}
+.aiSub{
+  text-align:center;
+  color:#2357d7;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.55;
+  margin:0 auto 24px;
+}
+.aiCard{
+  border:1px solid rgba(145,112,42,.25);
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 12px 32px rgba(0,0,0,.08);
+  padding:22px 18px;
+}
+.aiWorkLine{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#4b3510;
+  font-size:15px;
+  font-weight:800;
+  margin:13px 0;
+}
+.aiDot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#e8be58;
+  box-shadow:0 0 0 5px rgba(232,190,88,.18);
+}
+.aiProgress{
+  height:9px;
+  border-radius:99px;
+  background:#f4ead1;
+  overflow:hidden;
+  margin-top:20px;
+}
+.aiProgress span{
+  display:block;
+  height:100%;
+  width:0%;
+  border-radius:99px;
+  background:linear-gradient(90deg,#ffe49b,#e8be58,#bf8f31);
+  transition:width .35s ease;
+}
+.resultBody{
+  width:min(430px,100vw);
+  margin:0 auto;
+  min-height:100vh;
+  background:#fff;
+  padding:18px 14px 34px;
+}
+.resultTop{
+  text-align:center;
+  color:#3a2505;
+  font-size:20px;
+  font-weight:900;
+  margin:8px 0 10px;
+}
+.resultTip{
+  text-align:center;
+  color:#2357d7;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.45;
+  margin:0 0 14px;
+}
+.schemeTabs{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin:0 2px 12px;
+}
+.schemeTab{
+  height:38px;
+  border-radius:20px;
+  border:1px solid rgba(140,103,36,.45);
+  background:linear-gradient(180deg,#fff7df,#f0c75a 58%,#c9982d);
+  color:#2f2f2f;
+  font-size:13px;
+  font-weight:800;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.78),inset 0 -1px 0 rgba(0,0,0,.13),0 4px 9px rgba(0,0,0,.10);
+}
+.schemeTab.active{color:#1f59db}
+.previewPanel{
+  border:1px solid rgba(145,112,42,.25);
+  border-radius:22px;
+  background:#fff;
+  padding:12px;
+  box-shadow:0 10px 28px rgba(0,0,0,.08);
+}
+.postcardPreview{
+  width:100%;
+  aspect-ratio:210/148;
+  background:#f3f3f3;
+  border:1px solid rgba(0,0,0,.12);
+  overflow:hidden;
+  position:relative;
+}
+.postcardPreview canvas{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.stampPreviewAI{
+  position:absolute;
+  right:10px;
+  top:10px;
+  width:74px;
+  height:52px;
+  background:#fff;
+  padding:1.5px;
+  border:0;
+  box-sizing:border-box;
+  box-shadow:0 5px 12px rgba(0,0,0,.18);
+}
+.stampPreviewAI canvas{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.aiCaption{
+  margin:10px auto 0;
+  padding:9px 10px;
+  border-radius:14px;
+  background:#fff8d9;
+  color:#3a2505;
+  text-align:center;
+  font-size:13px;
+  line-height:1.42;
+  font-weight:700;
+}
+.aiChat{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:1fr 74px;
+  gap:8px;
+}
+.aiChat input{
+  height:40px;
+  border-radius:20px;
+  border:1px solid rgba(145,112,42,.28);
+  padding:0 14px;
+  font-size:14px;
+  outline:none;
+}
+.aiChat button,.goldMini{
+  height:40px;
+  border-radius:20px;
+  border:1px solid rgba(140,103,36,.45);
+  background:linear-gradient(180deg,#ffe49b 0%, #e8be58 52%, #bf8f31 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(0,0,0,.15),0 4px 10px rgba(0,0,0,.10);
+  color:#1f59db;
+  font-weight:800;
+  font-size:14px;
+}
+.resultActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+.resultActions button{
+  height:44px;
+  border-radius:24px;
+  border:1px solid rgba(140,103,36,.45);
+  background:linear-gradient(180deg,#ffe49b 0%, #e8be58 52%, #bf8f31 100%);
+  color:#2f2f2f;
+  text-shadow:0 1px 0 rgba(255,255,255,.75),0 -1px 0 rgba(0,0,0,.12);
+  font-size:15px;
+  font-weight:800;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 -2px 0 rgba(0,0,0,.16),0 6px 14px rgba(0,0,0,.12);
+}
+.resultActions .primary{color:#1f59db}
+
+</style>
+
+<style>
+.controlGrid.borderOnly{grid-template-columns:1fr 1fr;max-width:520px;margin-left:auto;margin-right:auto}
+.cropFrame.whiteBorder{background:#fff}
+#frame,#frame img{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.modeBtn#aiOptimizeBtn{color:#1f59db}.decisionMask{z-index:80}
+</style>
+<style id="v18-layout">.stampControls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.stampControls[hidden],#bgControls[hidden]{display:none!important}.stampControls .option{font-size:15px;padding:12px 2px}.cropFrame.stampEditing{background:#fff;border:0;box-shadow:none;overflow:hidden;mask-image:radial-gradient(circle at 7px 7px,#000 99%,transparent 101%);-webkit-mask-image:none;clip-path:polygon(1% 0,99% 0,100% 1%,100% 99%,99% 100%,1% 100%,0 99%,0 1%);position:relative}.cropFrame.stampEditing:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 54%,#fff 56%) left top / 17px 17px repeat-x,radial-gradient(circle at center,transparent 54%,#fff 56%) left bottom / 17px 17px repeat-x,radial-gradient(circle at center,transparent 54%,#fff 56%) left top / 17px 17px repeat-y,radial-gradient(circle at center,transparent 54%,#fff 56%) right top / 17px 17px repeat-y;opacity:.85}.cropFrame.stampEditing .cropViewport{inset:3.7% 3.7%!important;background:#fff;outline:0!important}.cropFrame.stampEditing .grid{pointer-events:none}</style><style id="fine-tune-layout">
+/* Selection-page compact tool layout: keep large touch targets and a visible lower toolbar. */
+.editorBody{padding:10px 15px 15px}
+.editorBody .topTitle{margin:2px 0 10px!important}
+.editorBody .sourceRow,.editorBody .modeRow{margin-bottom:9px}
+.editorBody .previewZone{margin-bottom:7px}
+.editHint{text-align:center;color:#245bc5;font-weight:700;font-size:12px;line-height:1.4;margin:5px 0 7px}
+#bgControls{display:flex;justify-content:center;gap:10px;margin-bottom:8px}
+#bgControls .option{height:35px;width:31%;max-width:130px;font-size:14px}
+.editorBody .stampControls{margin:6px 0!important}
+.editorBody .stampControls .option{height:38px}
+.editorBody .sliderRow{min-height:40px;margin:7px 0;gap:8px}
+.editorBody .sliderRow input{height:34px;touch-action:pan-x}
+.editorBody .smallRow{margin-top:6px}
+.editorBody .smallRow button{height:38px}
+@media(max-height:760px){.editorBody .cropFrame{max-height:38dvh}.editorBody .previewZone{max-height:38dvh}}
+
+.fineTune{margin-top:10px}
+.fineTuneKeys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.fineKey{min-width:0;height:36px;padding:0 1px;border-radius:19px;border:1px solid rgba(140,103,36,.45);background:linear-gradient(180deg,#fff7df,#f0c75a 58%,#c9982d);color:#333;font-weight:800;font-size:13px;box-shadow:inset 0 1px 0 #fff9,0 3px 6px #0001}
+.fineKey.active{color:#1f59db;outline:1px solid #d5a039}
+.fineTuneTrack{display:flex;align-items:center;gap:7px;margin-top:7px;color:#245bc5;font-size:17px}
+.fineTuneTrack input{flex:1;min-width:0;accent-color:#d6a32c;height:23px;margin:0}
+.fineTuneTrack output{font-size:12px;min-width:18px;text-align:right;color:#555}
+</style><style id="v-next-object-layout">
+.previewSwitch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 7px;padding:0 2px;min-height:30px}
+#previewTarget{color:#245bc5;font-size:14px;font-weight:800}
+#toggleStampZoom{background:linear-gradient(#fff9e6,#edc55b);border:1px solid #cba34c;border-radius:18px;padding:6px 12px;font-size:13px;font-weight:800;color:#3c3018;white-space:nowrap}
+.postcardPreview.stampZoomed{background:#f7f8f8;display:flex;align-items:center;justify-content:center;padding:4%}
+.postcardPreview.stampZoomed #postcardCanvas{width:100%;height:auto;max-height:100%;object-fit:contain;background:white;clip-path:none}
+.postcardPreview.stampZoomed .stampPreviewAI{display:none}
+.fineTuneTrack{margin-top:15px;margin-bottom:9px;min-height:34px;gap:10px}
+.fineTuneTrack input{height:34px;min-height:34px}
+#bgControls .option{width:calc((100% - 20px)/3);max-width:none;height:43px;font-size:15px}
+.editorBody .sliderRow{min-height:46px;margin:12px 0}
+.editorBody .sliderRow input{height:40px}
+.editHint{margin:8px 0 9px;font-size:12px}
+@media(max-height:800px){.editorBody .sliderRow{margin:8px 0}.editorBody .sourceRow,.editorBody .modeRow{margin-bottom:6px}}
+</style><style id="v37-targeted-fixes">
+/* Keep all final actions visible above the browser chrome on typical phone viewports. */
+#stageResult .resultBody{padding-top:25px;padding-bottom:5px}
+#stageResult .resultTop{margin:3px 0 7px}
+#stageResult .resultTip{margin-bottom:17px}
+#stageResult .schemeTabs{margin-bottom:6px}
+#stageResult .previewPanel{padding:9px}
+#stageResult .previewSwitch{margin:0 0 5px;min-height:27px}
+#stageResult .aiCaption{margin-top:7px;padding:7px 8px}
+#stageResult .fineTune{margin-top:8px}
+#stageResult .fineTuneTrack{margin-top:9px;margin-bottom:0;min-height:42px}
+#stageResult .resultActions{margin-top:4px;gap:10px}
+#stageResult #toggleStampZoom{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;min-height:32px}
+#stageResult #toggleStampZoom .zoomIcon{font-size:20px;font-weight:900;line-height:1;letter-spacing:0;white-space:nowrap;margin-right:3px}
+#stageResult #toggleStampZoom.active .zoomText{color:#1f59db}
+#bgControls{display:flex;justify-content:center;gap:8px}
+#bgControls .option{width:calc((100% - 16px)/3);height:42px;font-size:14px}
+.editorBody .editHint{font-size:11.5px;line-height:1.3;margin:5px 0 9px}
+.editorBody .sliderRow{min-height:44px;margin:10px 0}
+.editorBody .smallRow{margin-top:8px}
+@media(max-height:790px){
+ #stageResult .resultBody{padding-top:17px}
+ #stageResult .resultTop{margin:0 0 5px}
+ #stageResult .resultTip{margin-bottom:12px}
+ #stageResult .schemeTabs{margin-bottom:5px}
+ #stageResult .previewPanel{padding:7px}
+ #stageResult .aiCaption{margin-top:5px;padding:6px}
+ #stageResult .fineTuneTrack{margin-top:7px}
+}
+#stampControls:not([hidden]){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#stampControls[hidden]{display:none!important}
+#stampControls .option{width:100%;height:42px;display:flex;align-items:center;justify-content:center;line-height:1.1;padding:0 2px}
+.postcardPreview.stampZoomed{padding:0;background:#eef0f1;align-items:center;justify-content:center}
+.postcardPreview.stampZoomed #postcardCanvas{width:100%;height:100%;max-height:none;object-fit:contain;background:transparent}
+</style></head>
+<body>
+<div class="screen active" id="stageA"><div class="page"><h1 class="title">确定明信片及邮票图案</h1><div class="info">请选择照片，它将按成品比例在窗框内展示！<br>您看到什么，未来图案就是什么！</div><label class="legal"><input id="agree" type="checkbox"><span>我确认拥有所选照片的合法使用权，绝不上传违法、侵权、淫秽、暴力或其它不适宜内容。如违反相关规定，我愿承担相应法律责任及可能产生的处罚或损失。</span></label><button class="button" id="startBtn">选择明信片照片</button><p class="hint">支持来自手机现拍、收藏夹和相册的照片！</p></div></div>
+<div class="screen" id="stageB"><div class="editor"><div class="editorBody"><div class="topTitle" style="text-align:center;font-size:20px;margin:4px 0 14px">确定明信片及邮票图案</div><div class="sourceRow"><button class="sourceBtn" data-source="camera">📷 现拍</button><button class="sourceBtn" id="candidateSourceBtn" type="button">📁 收藏夹</button><button class="sourceBtn" data-source="album">🖼 相册</button></div><div class="modeRow"><button class="modeBtn active" id="sameBtn">背景图案</button><button class="modeBtn" id="diffBtn">邮票图案</button><button class="modeBtn" id="aiOptimizeBtn">AI优化</button></div><div class="previewZone"><div class="cropFrame" id="frame"><div class="cropViewport" id="cropViewport"><img id="photo" class="photoLayer" alt=""><div class="grid"></div></div></div><div class="stampBox"><div class="stampTitle">邮票预览</div><div class="stampPreview"><div id="stampInner" class="stampInner"></div></div></div></div><div class="editHint" id="editHint">画框与实际比例相符，可移动、缩放或旋转画面，以满足己需</div><div class="controlGrid borderOnly" id="bgControls"><button class="option active" id="borderBtn">带白边</button><button class="option" id="noBorderBtn">无白边</button></div><div class="stampControls" id="stampControls" hidden><button class="option active" id="stampSame">同背景图</button><button class="option" id="stampDifferent">另选邮票</button><button class="option" id="stampSwap">双图互换</button></div><div class="sliderRow"><span>缩放</span><input id="scaleRange" type="range" min="-0.95" max="3" step="0.01" value="0"><span id="scaleText">100%</span></div><div class="sliderRow"><span>旋转</span><input id="rotateRange" type="range" min="-180" max="180" step="1" value="0"><span id="rotateText">0°</span></div><div class="smallRow"><button id="rotL">↺ 90°</button><button id="rotR">↻ 90°</button><button id="resetBtn">复位</button></div><div class="msg" id="msg">照片已保存！已生成 postcardImage 与 stampImage。</div></div></div></div>
+
+<div class="sourceDialogMask" id="sourceDialogMask">
+  <div class="sourceDialog">
+    <div class="sourceDialogTitle">请选择照片来源</div>
+    <div class="sourceDialogGrid">
+      <button class="sourceDialogBtn" data-pick="camera" type="button"><span class="icon">📷</span>现拍</button>
+      <button class="sourceDialogBtn" data-pick="candidate" type="button"><span class="icon">📁</span>收藏夹</button>
+      <button class="sourceDialogBtn" data-pick="album" type="button"><span class="icon">🖼</span>相册</button>
+    </div>
+    <div class="sourceDialogNote">您在现场的自拍照及在相册中精选出<br>的照片，都可存入收藏夹中候选备用<br>以免需要时再到杂乱的相册中去寻找</div>
+<button class="sourceDialogClose" id="sourceDialogClose" type="button">上一步</button>
+  </div>
+</div>
+
+
+<div class="candidateMask" id="candidateMask"><div class="candidatePanel"><div class="candidateTitle">收藏夹</div><div class="candidateHelp">这里只临时保存本次制作的候选照片。付款确认或退出制作后，可自动清理，避免占用空间。</div><div class="candidateList" id="candidateList"></div><button class="sourceDialogClose" id="candidateBackBtn" type="button">上一步</button></div></div>
+<div class="decisionMask" id="decisionMask"><div class="decisionPanel"><div class="decisionTitle">这张照片如何使用？</div><div class="candidateHelp">您可以直接进入裁剪，也可以先放入收藏夹，方便之后对比或替换。</div><div class="decisionButtons"><button class="primary" id="useNowBtn" type="button">直接进入裁剪</button><button id="saveAndUseBtn" type="button">加入收藏夹并进入裁剪</button><button id="saveOnlyBtn" type="button">仅加入收藏夹</button><button id="decisionBackBtn" type="button">上一步</button></div></div></div>
+
+<div class="screen" id="stageAI">
+  <div class="aiScreen">
+    <h1 class="aiTitle">AI 正在生成纪念方案</h1>
+    <p class="aiSub">无需手动裁剪<br>AI 将自动生成明信片与邮票图案</p>
+    <div class="aiCard">
+      <div class="aiWorkLine"><span class="aiDot"></span><span id="aiLine1">正在压缩照片避免卡顿</span></div>
+      <div class="aiWorkLine"><span class="aiDot"></span><span id="aiLine2">正在寻找最佳明信片构图</span></div>
+      <div class="aiWorkLine"><span class="aiDot"></span><span id="aiLine3">正在生成邮票候选图案</span></div>
+      <div class="aiWorkLine"><span class="aiDot"></span><span id="aiLine4">正在匹配纪念风格</span></div>
+      <div class="aiProgress"><span id="aiProgressBar"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="stageResult">
+  <div class="resultBody">
+    <div class="resultTop">AI 已生成三种方案</div>
+    <div class="resultTip">请选择喜欢的方案，点击确认完成选图<br>AI提供的更多选项，只为助您心满意足</div>
+
+    <div class="schemeTabs">
+      <button class="schemeTab active" data-scheme="0">经典邮政</button>
+      <button class="schemeTab" data-scheme="1">电影纪念</button>
+      <button class="schemeTab" data-scheme="2">温暖旅行</button>
+    </div>
+
+    <div class="previewPanel">
+      <div class="previewSwitch"><span id="previewTarget">背景图案优化</span><button type="button" id="toggleStampZoom"><span class="zoomIcon" aria-hidden="true">⛶</span><span class="zoomText">邮票优化</span></button></div>
+      <div class="postcardPreview" id="resultPicture">
+        <canvas id="postcardCanvas" width="1260" height="888"></canvas>
+        <div class="stampPreviewAI"><canvas id="stampCanvas" width="360" height="252"></canvas></div>
+      </div>
+      <div class="aiCaption" id="aiCaption">AI 已自动生成适合 A5 明信片和邮票的纪念图案</div>
+
+      <div class="fineTune" aria-label="图案微调">
+        <div class="fineTuneKeys">
+          <button type="button" class="fineKey active" data-fine="brightness">亮度</button>
+          <button type="button" class="fineKey" data-fine="color">色彩</button>
+          <button type="button" class="fineKey" data-fine="soft">柔和</button>
+          <button type="button" class="fineKey" data-fine="sharp">清晰</button>
+          <button type="button" class="fineKey" id="fineReset">复位</button>
+        </div>
+        <div class="fineTuneTrack"><span>−</span><input type="range" id="fineRange" min="-5" max="5" step="1" value="0" aria-label="微调程度"><span>＋</span><output id="fineValue">0</output></div>
+      </div>
+
+      <div class="resultActions">
+        
+        
+        <button id="aiBackAdjust" type="button">上一步</button>
+        <button id="aiConfirm" type="button">确认</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="decisionMask" id="portraitWarn"><div class="decisionPanel"><div class="candidateHelp" style="font-size:16px;line-height:1.65">当前背景图为竖幅，建议另选横幅照片作为邮票图案，否则，邮票图案的竖幅显示将被旋转90度。</div><div class="decisionButtons"><button class="primary" id="usePortraitStamp" type="button">仍用竖幅照片</button><button id="chooseLandscapeStamp" type="button">另选横幅照片</button></div></div></div>
+<input id="cameraInput" class="hiddenInput" type="file" accept="image/*" capture="environment"><input id="fileInput" class="hiddenInput" type="file"><input id="albumInput" class="hiddenInput" type="file" accept="image/*">
+<script>
+(function(){
+const A=document.getElementById('stageA'),B=document.getElementById('stageB'),stageAI=document.getElementById('stageAI'),stageResult=document.getElementById('stageResult');
+const startBtn=document.getElementById('startBtn'),agree=document.getElementById('agree'),photo=document.getElementById('photo'),frame=document.getElementById('frame');
+const scaleRange=document.getElementById('scaleRange'),rotateRange=document.getElementById('rotateRange'),scaleText=document.getElementById('scaleText'),rotateText=document.getElementById('rotateText');
+const mask=document.getElementById('sourceDialogMask'),closeDlg=document.getElementById('sourceDialogClose'),candidateMask=document.getElementById('candidateMask'),candidateList=document.getElementById('candidateList'),candidateBackBtn=document.getElementById('candidateBackBtn'),candidateSourceBtn=document.getElementById('candidateSourceBtn');
+const portraitWarn=document.getElementById('portraitWarn');
+const inputs={camera:document.getElementById('cameraInput'),album:document.getElementById('albumInput')};
+const sourceBtns=[...document.querySelectorAll('.sourceBtn')];
+const sameBtn=document.getElementById('sameBtn'),diffBtn=document.getElementById('diffBtn'),aiOptimizeBtn=document.getElementById('aiOptimizeBtn');
+const noBorderBtn=document.getElementById('noBorderBtn'),borderBtn=document.getElementById('borderBtn'),cropViewport=document.getElementById('cropViewport');
+let bg=blankState(), stamp=blankState(), editing='bg', mode='same', pickerPurpose='bg', sourceReturn='start';
+let candidatePhotos=[];
+let aiScheme=0,aiTone='',aiResultReady=false,originalAI=null,aiEntryMode='same',aiSwapState=false;
+let aiTarget='bg';const aiSettings={bg:{scheme:0,values:{brightness:0,color:0,soft:0,sharp:0},saved:null},stamp:{scheme:0,values:{brightness:0,color:0,soft:0,sharp:0},saved:null}};
+function aiCurrent(){return aiSettings[aiTarget]}
+function aiFilterFor(which){const t=aiSettings[which];return fineFilter(t.scheme,t.values)}
+function blankState(){return {src:null,x:0,y:0,zoom:0,rotate:0,fitScale:1,border:true,portraitOriginal:false,nw:0,nh:0}}
+function cloneState(o){return JSON.parse(JSON.stringify(o))}
+function current(){return editing==='stamp'?stamp:bg}
+function showOnly(el){[A,B,stageAI,stageResult].forEach(x=>x&&x.classList.remove('active'));el.classList.add('active');window.scrollTo(0,0);if(el===B)requestAnimationFrame(()=>{if(typeof renderEditorBg==='function')renderEditorBg();if(typeof renderEditorStamp==='function')renderEditorStamp()})}
+function setMode(m){mode=m;aiOptimizeBtn.classList.remove('active');updateEditorTabs()}
+function clearSourceActive(){sourceBtns.forEach(b=>b.classList.remove('active'))}
+function setEditing(which){editing=which;updateEditorTabs();const st=current();if(st.src){photo.onload=()=>{syncUI();apply()};if(photo.src!==st.src)photo.src=st.src;else {syncUI();apply()}}else{photo.removeAttribute('src')}syncUI()}
+const stampControls=document.getElementById('stampControls'),bgControls=document.getElementById('bgControls');
+const stampSame=document.getElementById('stampSame'),stampDifferent=document.getElementById('stampDifferent'),stampSwap=document.getElementById('stampSwap');
+let swapped=false;
+function updateEditorTabs(){sameBtn.classList.toggle('active',editing==='bg');diffBtn.classList.toggle('active',editing==='stamp');bgControls.hidden=editing!=='bg';stampControls.hidden=editing!=='stamp';stampSame.classList.toggle('active',mode==='same');stampDifferent.classList.toggle('active',mode==='diff');stampSwap.classList.toggle('active',swapped);frame.classList.toggle('stampEditing',editing==='stamp');renderEditorStamp();renderEditorBg()}
+function syncUI(){const st=current();photo.style.filter=aiFilterFor(editing);scaleRange.value=st.zoom;rotateRange.value=st.rotate;scaleText.textContent=Math.round((1+Number(st.zoom))*100)+'%';rotateText.textContent=Math.round(st.rotate)+'°';frame.classList.toggle('whiteBorder',editing==='bg'&&!!st.border);noBorderBtn.classList.toggle('active',!st.border);borderBtn.classList.toggle('active',!!st.border)}
+function calcFit(st){const r=frame.getBoundingClientRect();const insetX=editing==='stamp'?r.width*.0594:(st.border?6:0),insetY=editing==='stamp'?r.height*.0702:(st.border?6:0);const vw=Math.max(1,r.width-insetX*2),vh=Math.max(1,r.height-insetY*2);let w=st.nw||photo.naturalWidth,h=st.nh||photo.naturalHeight;const q=((Math.round(st.rotate/90)%2)+2)%2;if(q===1)[w,h]=[h,w];const contain=Math.min(vw/w,vh/h),cover=Math.max(vw/w,vh/h);
+const visibleFraction=(vw*vh)/(w*h*cover*cover);
+st.fitScale=cover;st.minZoom=Math.min(0,contain/cover-1);if(st.zoom<st.minZoom)st.zoom=st.minZoom}
+function apply(){const st=current();if(!st.src||!photo.naturalWidth)return;calcFit(st);scaleRange.min=String(st.minZoom);const sc=st.fitScale*Math.max(.05,1+st.zoom);photo.style.width=(st.nw||photo.naturalWidth)+'px';photo.style.height=(st.nh||photo.naturalHeight)+'px';photo.style.transform=`translate(${st.x}px,${st.y}px) rotate(${st.rotate}deg) scale(${sc}) translate(-50%,-50%)`;syncUI();renderEditorStamp();renderEditorBg()}
+function resetState(st){st.x=0;st.y=0;st.zoom=0;st.rotate=st.portraitOriginal?-90:0;apply()}
+function loadImageToState(src,which){const t=aiSettings[which];Object.keys(t.values).forEach(k=>t.values[k]=0);t.saved=null;t.scheme=0;aiScheme=0;document.querySelectorAll('.schemeTab').forEach(b=>b.classList.toggle('active',b.dataset.scheme==='0'));const st=which==='stamp'?stamp:bg;st.src=src;editing=which;showOnly(B);updateEditorTabs();const im=new Image();im.onload=()=>{st.nw=im.naturalWidth;st.nh=im.naturalHeight;st.portraitOriginal=im.naturalHeight>im.naturalWidth;if(which==='bg')portraitHintShown=false;st.rotate=st.portraitOriginal?-90:0;st.x=0;st.y=0;st.zoom=0;editing=which;showOnly(B);photo.onload=()=>{if(current().src!==src)return;requestAnimationFrame(()=>{apply();syncUI();renderEditorBg()})};photo.onerror=()=>{document.getElementById('msg').textContent='照片载入失败，请重新选择';document.getElementById('msg').style.display='block'};photo.src=src;if(photo.complete&&photo.naturalWidth)requestAnimationFrame(()=>{if(current().src===src){apply();syncUI();renderEditorBg()}});if(which==='bg'&&mode==='same'){stamp=cloneState(bg);stamp.border=false}};im.src=src}
+function showSourceDialog(purpose,ret){pickerPurpose=purpose||'bg';sourceReturn=ret||'editor';mask.style.display='flex'}
+function hideSourceDialog(){mask.style.display='none'}
+startBtn.onclick=()=>{if(!agree.checked){alert('请先确认照片合法使用责任。');return}showSourceDialog('bg','start')};
+closeDlg.onclick=()=>{hideSourceDialog(); if(sourceReturn==='editor')showOnly(B)};
+mask.addEventListener('click',e=>{if(e.target===mask)closeDlg.onclick()});
+document.querySelectorAll('.sourceDialogBtn').forEach(b=>b.onclick=()=>{const pick=b.dataset.pick;hideSourceDialog();if(pick==='candidate'){showCandidateFolder();return}openPicker(pick)});
+sourceBtns.forEach(b=>{if(b.id==='candidateSourceBtn')return;b.onclick=()=>{pickerPurpose=editing;clearSourceActive();openPicker(b.dataset.source)}});
+if(candidateSourceBtn)candidateSourceBtn.onclick=()=>{pickerPurpose=editing;sourceReturn='editor';clearSourceActive();showCandidateFolder()};
+function openPicker(v){if(v==='candidate'){showCandidateFolder();return}const i=inputs[v];if(!i)return;i.value='';i.click()}
+Object.entries(inputs).forEach(([k,i])=>i.onchange=e=>handleFile(e.target.files[0]));
+function handleFile(f){if(!f)return;const rd=new FileReader();rd.onload=e=>{const src=e.target.result;addCandidate(src);loadImageToState(src,pickerPurpose==='stamp'?'stamp':'bg');if(pickerPurpose==='stamp'){setMode('diff')}};rd.readAsDataURL(f)}
+
+/* 收藏夹：IndexedDB 为主，localStorage 为兼容。照片不因关闭页面而清除。 */
+const DB='SmartPostcardPersistentPhotos',STORE='candidates';
+function dbOpen(){return new Promise((res,rej)=>{try{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE,{keyPath:'id'})};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}})}
+async function loadCandidates(){try{const db=await dbOpen();const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).getAll();candidatePhotos=await new Promise((res,rej)=>{req.onsuccess=()=>res(req.result.sort((a,b)=>b.time-a.time).map(x=>x.src));req.onerror=()=>rej(req.error)})}catch(e){try{candidatePhotos=JSON.parse(localStorage.getItem('smartPostcardCandidates')||'[]')||[]}catch(_){candidatePhotos=[]}}}
+async function addCandidate(src){if(!src)return;if(!candidatePhotos.includes(src))candidatePhotos.unshift(src);candidatePhotos=candidatePhotos.slice(0,20);try{const db=await dbOpen();const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put({id:await hashSrc(src),src,time:Date.now()})}catch(e){try{localStorage.setItem('smartPostcardCandidates',JSON.stringify(candidatePhotos.slice(0,6)))}catch(_){}}}
+async function hashSrc(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s.slice(0,12000)));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return String(s.length)+'_'+s.slice(-80)}}
+function renderCandidates(){candidateList.innerHTML='';if(!candidatePhotos.length){candidateList.innerHTML='<div class="candidateEmpty">收藏夹暂时为空<br>您可先从现拍或相册选择候选照片</div>';return}candidatePhotos.forEach(src=>{const cell=document.createElement('div');cell.className='candidateThumb';const im=document.createElement('img');im.src=src;cell.appendChild(im);cell.onclick=()=>{candidateMask.style.display='none';hideSourceDialog();clearSourceActive();loadImageToState(src,pickerPurpose==='stamp'?'stamp':'bg');if(pickerPurpose==='stamp')setMode('diff')};candidateList.appendChild(cell)})}
+async function showCandidateFolder(){await loadCandidates();renderCandidates();candidateMask.style.display='flex'}
+candidateBackBtn.onclick=()=>{candidateMask.style.display='none';hideSourceDialog();showOnly(B);clearSourceActive()};
+loadCandidates();
+
+sameBtn.onclick=()=>{if(bg.src)setEditing('bg')};
+let portraitHintShown=false;
+diffBtn.onclick=()=>{
+  if(!bg.src)return;
+  if(mode==='same'){stamp=cloneState(bg);stamp.border=false}
+  else if(!stamp.src){stamp=cloneState(bg);stamp.border=false}
+  setEditing('stamp');
+  if(bg.portraitOriginal&&!portraitHintShown){portraitHintShown=true;portraitWarn.style.display='flex'}
+};
+document.getElementById('usePortraitStamp').onclick=()=>{portraitWarn.style.display='none'};
+document.getElementById('chooseLandscapeStamp').onclick=()=>{portraitWarn.style.display='none';setMode('diff');pickerPurpose='stamp';sourceReturn='editor';showSourceDialog('stamp','editor')};
+stampSame.onclick=()=>{if(!bg.src)return;setMode('same');stamp=cloneState(bg);stamp.border=false;swapped=false;setEditing('stamp')};
+stampDifferent.onclick=()=>{setMode('diff');pickerPurpose='stamp';sourceReturn='editor';showSourceDialog('stamp','editor')};
+// Preserve the actual image framing when a photograph changes slots.
+// Background and stamp have different inner paper margins, so copying the
+// same numeric zoom otherwise changes the crop even though it says 100%.
+// V64: swap the complete image states without recalculating zoom.
+// Both editor and AI render through the same canonical stamp crop.
+stampSwap.onclick=()=>{
+ if(!bg.src||!stamp.src)return;
+ const oldBg=bg,oldStamp=stamp;
+ const nextBg=cloneState(oldStamp),nextStamp=cloneState(oldBg);
+ nextBg.border=oldBg.border;nextStamp.border=false;
+ bg=nextBg;stamp=nextStamp;
+ setMode('diff');swapped=!swapped;setEditing('stamp');
+};
+function syncSameStamp(){if(mode==='same'&&editing==='bg'){stamp=cloneState(bg);stamp.border=false}}
+scaleRange.oninput=()=>{current().zoom=Number(scaleRange.value);syncSameStamp();apply()};rotateRange.oninput=()=>{current().rotate=Number(rotateRange.value);syncSameStamp();apply()};
+document.getElementById('rotL').onclick=()=>{current().rotate-=90;syncSameStamp();apply()};document.getElementById('rotR').onclick=()=>{current().rotate+=90;syncSameStamp();apply()};document.getElementById('resetBtn').onclick=()=>{resetState(current());syncSameStamp()};
+noBorderBtn.onclick=()=>{current().border=false;syncSameStamp();apply()};borderBtn.onclick=()=>{current().border=true;syncSameStamp();apply()};
+
+const activePointers=new Map();
+let gestureStart=null;
+function gestureSnapshot(){
+  const pts=[...activePointers.values()];
+  const st=current();
+  if(!pts.length)return null;
+  const cx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
+  const cy=pts.reduce((a,p)=>a+p.y,0)/pts.length;
+  const distance=pts.length>1?Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y):0;
+  return {cx,cy,distance,x:st.x,y:st.y,zoom:st.zoom,fit:st.fitScale};
+}
+frame.addEventListener('contextmenu',e=>e.preventDefault());
+photo.addEventListener('dragstart',e=>e.preventDefault());
+frame.addEventListener('selectstart',e=>e.preventDefault());
+frame.addEventListener('pointerdown',e=>{
+  if(!current().src)return;
+  e.preventDefault();
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  frame.setPointerCapture(e.pointerId);
+  gestureStart=gestureSnapshot();
+});
+frame.addEventListener('pointermove',e=>{
+  if(!activePointers.has(e.pointerId)||!gestureStart)return;
+  e.preventDefault();
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const pts=[...activePointers.values()];
+  const cx=pts.reduce((a,p)=>a+p.x,0)/pts.length;
+  const cy=pts.reduce((a,p)=>a+p.y,0)/pts.length;
+  const st=current();
+  st.x=gestureStart.x+cx-gestureStart.cx;
+  st.y=gestureStart.y+cy-gestureStart.cy;
+  if(pts.length>1&&gestureStart.distance>5){
+    const d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+    st.zoom=Math.max(st.minZoom??-.95,Math.min(3,(1+gestureStart.zoom)*d/gestureStart.distance-1));
+  }
+  syncSameStamp();apply();
+});
+function finishPointer(e){
+  activePointers.delete(e.pointerId);
+  gestureStart=gestureSnapshot();
+}
+frame.addEventListener('pointerup',finishPointer);
+frame.addEventListener('pointercancel',finishPointer);
+frame.addEventListener('lostpointercapture',finishPointer);
+
+function stateToDataURL(st,w=1260,h=888,kind='bg'){
+ return new Promise(resolve=>{
+  const im=new Image();im.onload=()=>{
+   const c=document.createElement('canvas');c.width=w;c.height=h;
+   drawStateOnCanvas(c.getContext('2d'),im,st,w,h,kind,'none',false);
+   resolve(c.toDataURL('image/png'));
+  };im.onerror=()=>resolve(null);im.src=st.src;
+ });
+}
+function drawStateOnCanvas(ctx,im,st,w,h,kind,filter='none',perforate=false,aiBackgroundBorder=false){
+ // V60: one canonical photo crop for both outputs in 同背景图 mode.
+ // Render at a fixed reference size so the crop does not depend on which
+ // preview (editor/AI/postcard/stamp) requested the image.
+ if((kind==='bg'||kind==='stamp') && st.src){
+  const baseW=1260,baseH=888;
+  const raw=document.createElement('canvas');raw.width=baseW;raw.height=baseH;
+  // Reuse the original stamp transform only once; no second zoom/fit pass.
+  drawStateOnCanvas(raw.getContext('2d'),im,st,baseW,baseH,'sharedSource',filter,false);
+  const insetX=.0594,insetY=.0702;
+  const ctxX=kind==='stamp'?insetX:(st.border?.017:0);
+  const ctxY=kind==='stamp'?insetY:(st.border?.017:0);
+  ctx.save();ctx.filter='none';ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  const dx=w*ctxX,dy=h*ctxY,dw=w-2*dx,dh=h-2*dy;
+  // Shared image coordinates: exact same upper-left pixel for all four views.
+  ctx.drawImage(raw,baseW*insetX,baseH*insetY,baseW*(1-2*insetX),baseH*(1-2*insetY),dx,dy,dw,dh);
+  ctx.restore();
+  if(perforate)cutStampPerforations(ctx,w,h);
+  return;
+ }
+ const fw=frame.clientWidth||520,fh=frame.clientHeight||367;
+ const sx=w/fw,sy=h/fh;
+ // These insets are exactly the editor's CSS: stamp 5.94%/7.02%, bg 6px when bordered.
+ const ix=(kind==='stamp'||kind==='sharedSource')?w*.0594:(st.border?w*.017:0);
+ const iy=(kind==='stamp'||kind==='sharedSource')?h*.0702:(st.border?h*.017:0);
+ const vw=w-2*ix,vh=h-2*iy;
+ let rw=st.nw||im.naturalWidth,rh=st.nh||im.naturalHeight;
+ const q=((Math.round(st.rotate/90)%2)+2)%2;
+ if(q===1)[rw,rh]=[rh,rw];
+ const contain=Math.min(vw/rw,vh/rh),cover=Math.max(vw/rw,vh/rh);
+ const fit=cover;
+ ctx.save();ctx.filter='none';ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+ ctx.beginPath();ctx.rect(ix,iy,vw,vh);ctx.clip();
+ ctx.translate(w/2+st.x*sx,h/2+st.y*sy);
+ ctx.rotate(st.rotate*Math.PI/180);
+ ctx.scale(fit*Math.max(.05,1+st.zoom),fit*Math.max(.05,1+st.zoom));
+ ctx.filter=filter;
+ ctx.drawImage(im,-(st.nw||im.naturalWidth)/2,-(st.nh||im.naturalHeight)/2,st.nw||im.naturalWidth,st.nh||im.naturalHeight);
+ ctx.restore();
+ if(perforate)cutStampPerforations(ctx,w,h);
+}
+function cutStampPerforations(ctx,w,h){
+  ctx.save();ctx.globalCompositeOperation='destination-out';
+  const r=Math.max(2,w*.0157), step=w/14;
+  for(let i=0;i<=14;i++){let x=(i+.5)*step;
+   for(const y of [0,h]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}}
+  for(let i=0;i<=10;i++){let y=(i+.5)*h/10;
+   for(const x of [0,w]){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}}
+  ctx.restore();
+ }
+// Stamp editor uses the exact canvas renderer as AI and final output.
+const editorBgCanvas=document.createElement('canvas');
+editorBgCanvas.id='editorBgCanvas';frame.appendChild(editorBgCanvas);
+const bgEditorImage=new Image();let bgEditorLoaded='';
+function renderEditorBg(){
+ if(editing!=='bg'||!bg.src)return;
+ const src=bg.src;
+ if(bgEditorLoaded!==src){
+  bgEditorLoaded=src;
+  bgEditorImage.onload=()=>{if(bg.src===src)renderEditorBg()};
+  bgEditorImage.onerror=()=>{bgEditorLoaded='';};
+  bgEditorImage.src=src;
+  if(!bgEditorImage.complete||!bgEditorImage.naturalWidth)return;
+ }
+ if(!bgEditorImage.complete||!bgEditorImage.naturalWidth)return;
+ const r=frame.getBoundingClientRect();
+ const w=Math.max(1,Math.round(r.width*2)),h=Math.max(1,Math.round(r.height*2));
+ if(editorBgCanvas.width!==w)editorBgCanvas.width=w;
+ if(editorBgCanvas.height!==h)editorBgCanvas.height=h;
+ drawStateOnCanvas(editorBgCanvas.getContext('2d'),bgEditorImage,bg,w,h,'bg',aiFilterFor('bg'),false);
+}
+const editorStampCanvas=document.createElement('canvas');
+editorStampCanvas.id='editorStampCanvas';frame.appendChild(editorStampCanvas);
+const stampEditorImage=new Image();let stampEditorLoaded='';
+function renderEditorStamp(){
+ if(editing!=='stamp'||!stamp.src)return;
+ const src=stamp.src;
+ if(stampEditorLoaded!==src){stampEditorLoaded=src;stampEditorImage.onload=()=>{if(stamp.src===src)renderEditorStamp()};stampEditorImage.src=src;return}
+ if(!stampEditorImage.complete||!stampEditorImage.naturalWidth)return;
+ const r=frame.getBoundingClientRect();
+ const w=Math.max(1,Math.round(r.width*2)),h=Math.max(1,Math.round(r.height*2));
+ if(editorStampCanvas.width!==w)editorStampCanvas.width=w;
+ if(editorStampCanvas.height!==h)editorStampCanvas.height=h;
+ // Keep the complete perforated stamp inside the editor, centered on all four sides.
+ const ctx=editorStampCanvas.getContext('2d');
+ ctx.clearRect(0,0,w,h);
+ ctx.fillStyle='#e9eef1';ctx.fillRect(0,0,w,h);
+ const margin=Math.round(Math.min(w,h)*.045);
+ const innerW=w-2*margin,innerH=h-2*margin;
+ const stampSurface=document.createElement('canvas');stampSurface.width=innerW;stampSurface.height=innerH;
+ drawStateOnCanvas(stampSurface.getContext('2d'),stampEditorImage,stamp,innerW,innerH,'stamp',aiFilterFor('stamp'),true);
+ ctx.drawImage(stampSurface,margin,margin);
+}
+const postcardCanvas=document.getElementById('postcardCanvas'),stampCanvas=document.getElementById('stampCanvas'),pc=postcardCanvas.getContext('2d'),sc=stampCanvas.getContext('2d'),aiCaption=document.getElementById('aiCaption'),aiProgressBar=document.getElementById('aiProgressBar');
+let aiBgSrc=null,aiStampSrc=null,originalBgSrc=null,originalStampSrc=null;
+async function startAI(){if(!bg.src)return;aiEntryMode=mode;aiSwapState=false;if(!stamp.src){stamp=cloneState(bg);stamp.border=false}aiTarget='bg';syncFineControls();aiBgSrc=bg.src;aiStampSrc=stamp.src;aiDecodedImages.clear();originalBgSrc=aiBgSrc;originalStampSrc=aiStampSrc;showOnly(stageAI);let p=8;aiProgressBar.style.width=p+'%';const t=setInterval(()=>{p+=23;aiProgressBar.style.width=Math.min(p,100)+'%';if(p>=100){clearInterval(t);aiResultReady=true;renderAI();showOnly(stageResult)}},180)}
+aiOptimizeBtn.onclick=startAI;
+const fineValues=aiSettings.bg.values;
+let fineSaved=null;
+function resetFineForNewPhoto(){for(const key of ['bg','stamp']){const t=aiSettings[key];Object.keys(t.values).forEach(k=>t.values[k]=0);t.saved=null;t.scheme=0}aiTarget='bg';aiScheme=0;if(typeof fineRange!=='undefined')syncFineControls()}
+function updateFineReset(){const b=document.getElementById('fineReset'),on=aiCurrent().saved!==null;b.classList.toggle('active',on);b.textContent=on?'恢复':'复位';b.style.color=on?'#1f59db':'#333'}
+function refreshEditorFilter(){if(photo&&photo.src)photo.style.filter=aiFilterFor(editing)}
+let fineMode='brightness';
+const fineRange=document.getElementById('fineRange'),fineValue=document.getElementById('fineValue');
+function fineFilter(scheme,values=aiCurrent().values){
+  let brightness=1+values.brightness*.055, saturation=1+values.color*.12;
+  let contrast=1+values.sharp*.055-values.soft*.045;
+  let sepia=0;
+  if(scheme===1){brightness*=1.08;contrast*=1.03;saturation*=.9;sepia=.14}
+  else if(scheme===2){brightness*=1.06;saturation*=1.18;sepia=.08}
+  return `brightness(${Math.max(.35,brightness)}) contrast(${Math.max(.35,contrast)}) saturate(${Math.max(.1,saturation)}) sepia(${sepia})`;
+}
+const aiDecodedImages=new Map();
+let aiRenderSerial=0;
+function getDecodedAIImage(src){
+  if(!src)return Promise.resolve(null);
+  if(aiDecodedImages.has(src))return aiDecodedImages.get(src);
+  const task=new Promise((resolve,reject)=>{
+    const im=new Image();
+    im.onload=()=>resolve(im);
+    im.onerror=()=>reject(new Error('图案载入失败'));
+    im.src=src;
+  });
+  aiDecodedImages.set(src,task);
+  return task;
+}
+function drawDecoded(ctx,im,w,h,scheme,values){
+  if(!im||!im.naturalWidth)return;
+  const k=Math.min(w/im.naturalWidth,h/im.naturalHeight);
+  ctx.save();ctx.filter='none';ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  ctx.filter=fineFilter(scheme,values);
+  ctx.drawImage(im,(w-im.naturalWidth*k)/2,(h-im.naturalHeight*k)/2,im.naturalWidth*k,im.naturalHeight*k);
+  ctx.restore();
+}
+function syncFineControls(){
+  const t=aiCurrent();aiScheme=t.scheme;
+  document.querySelectorAll('.schemeTab').forEach(b=>b.classList.toggle('active',Number(b.dataset.scheme)===t.scheme));
+  document.querySelectorAll('.fineKey[data-fine]').forEach(b=>b.classList.toggle('active',b.dataset.fine===fineMode));
+  fineRange.value=t.values[fineMode];fineValue.textContent=fineRange.value;updateFineReset();
+  document.getElementById('previewTarget').textContent=aiTarget==='bg'?'背景图案优化':'邮票图案优化';
+  const btn=document.getElementById('toggleStampZoom');btn.classList.toggle('active',aiTarget==='stamp');btn.innerHTML='<span class="zoomIcon" aria-hidden="true">'+(aiTarget==='bg'?'⛶':'⛶')+'</span><span class="zoomText">'+(aiTarget==='bg'?'邮票优化':'邮票复位')+'</span>';btn.querySelector('.zoomIcon').innerHTML=aiTarget==='stamp'?'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l6 6m-5 0h5V4M21 3l-6 6m0-5v5h5M3 21l6-6m-5 0h5v5m12 1-6-6m0 5v-5h5"/></svg>':'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9 3 3m0 5V3h5m7 6 6-6m-5 0h5v5M9 15l-6 6m0-5v5h5m7-6 6 6m-5 0h5v-5"/></svg>';
+  document.getElementById('resultPicture').classList.toggle('stampZoomed',aiTarget==='stamp');
+}
+function renderAI(){
+  const b=aiSettings.bg,t=aiSettings.stamp;
+  const target=aiTarget,serial=++aiRenderSerial;
+  const mainSrc=target==='bg'?aiBgSrc:aiStampSrc;
+  const mainScheme=target==='bg'?b.scheme:t.scheme;
+  const mainValues={...(target==='bg'?b.values:t.values)};
+  const stampValues={...t.values};
+  const stampScheme=t.scheme;
+  Promise.all([getDecodedAIImage(mainSrc),getDecodedAIImage(aiStampSrc)]).then(([main,small])=>{
+    if(serial!==aiRenderSerial)return;
+    const st=target==='bg'?bg:stamp;
+    if(target==='stamp'){
+      // Match the selection editor: identical centered stamp surface and edge clearance.
+      const w=postcardCanvas.width,h=postcardCanvas.height;
+      const margin=Math.round(Math.min(w,h)*.045);
+      const sw=w-2*margin,sh=h-2*margin;
+      pc.clearRect(0,0,w,h);
+      pc.fillStyle='#e9eef1';pc.fillRect(0,0,w,h);
+      const surface=document.createElement('canvas');surface.width=sw;surface.height=sh;
+      drawStateOnCanvas(surface.getContext('2d'),main,st,sw,sh,'stamp',fineFilter(mainScheme,mainValues),true);
+      pc.drawImage(surface,margin,margin);
+    }else{
+      drawStateOnCanvas(pc,main,st,postcardCanvas.width,postcardCanvas.height,target,fineFilter(mainScheme,mainValues),false,true);
+    }
+    drawStateOnCanvas(sc,small,stamp,stampCanvas.width,stampCanvas.height,'stamp',fineFilter(stampScheme,stampValues),true);
+  }).catch(err=>{console.error('AI预览绘制失败',err)});
+  const caps=['经典邮政','电影纪念','温暖旅行'];
+  aiCaption.style.color='#245bc5';aiCaption.textContent=caps[aiCurrent().scheme]+'风格！您可锦上添花和一键正反向恢复！';
+}
+document.getElementById('toggleStampZoom').onclick=()=>{aiTarget=aiTarget==='bg'?'stamp':'bg';syncFineControls();renderAI();refreshEditorFilter()};
+document.querySelectorAll('.schemeTab').forEach(btn=>btn.onclick=()=>{aiCurrent().scheme=Number(btn.dataset.scheme);syncFineControls();renderAI();refreshEditorFilter()});
+document.querySelectorAll('.fineKey[data-fine]').forEach(btn=>btn.onclick=()=>{fineMode=btn.dataset.fine;syncFineControls()});
+fineRange.oninput=()=>{const t=aiCurrent();t.saved=null;t.values[fineMode]=Number(fineRange.value);fineValue.textContent=fineRange.value;updateFineReset();renderAI();refreshEditorFilter()};
+document.getElementById('fineReset').onclick=()=>{const t=aiCurrent();if(t.saved===null){t.saved={...t.values};Object.keys(t.values).forEach(k=>t.values[k]=0)}else{Object.assign(t.values,t.saved);t.saved=null}syncFineControls();renderAI();refreshEditorFilter()};
+function mark(btn){btn.style.color='#1f59db';document.getElementById('aiConfirm').style.color='#1f59db'}
+
+
+document.getElementById('aiBackAdjust').onclick=()=>{showOnly(B);clearSourceActive();const target=editing;photo.onload=null;photo.removeAttribute('src');requestAnimationFrame(()=>setEditing(target))};
+document.getElementById('aiConfirm').onclick=async()=>{
+ try{
+ const [bi,si]=await Promise.all([getDecodedAIImage(bg.src),getDecodedAIImage(stamp.src)]);
+ const bc=document.createElement('canvas');bc.width=1260;bc.height=888;
+ const tc=document.createElement('canvas');tc.width=1260;tc.height=888;
+ drawStateOnCanvas(bc.getContext('2d'),bi,bg,1260,888,'bg',fineFilter(aiSettings.bg.scheme,aiSettings.bg.values),false,true);
+ drawStateOnCanvas(tc.getContext('2d'),si,stamp,1260,888,'stamp',fineFilter(aiSettings.stamp.scheme,aiSettings.stamp.values),true);
+ window.postcardImage=bc.toDataURL('image/png');window.stampImage=tc.toDataURL('image/png');
+ // Persist the two finalized rendered images in IndexedDB (localStorage is too small for photos).
+ const db=await new Promise((resolve,reject)=>{const req=indexedDB.open('SmartPostcardPhotoHandoff',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('images'))req.result.createObjectStore('images')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+ try{await new Promise((resolve,reject)=>{const tx=db.transaction('images','readwrite');const store=tx.objectStore('images');store.put(window.postcardImage,'background');store.put(window.stampImage,'stamp');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}finally{db.close()}
+ aiCaption.textContent='明信片与邮票图案已确认';document.getElementById('aiConfirm').style.color='#1f59db';
+ window.location.href='../02B_Center/cn_make_v8.0_V66.html?sp_photos=1';
+ }catch(error){console.error('Photo handoff failed',error);alert('照片保存未完成，请重试确认。');}
+};
+})();
+</script>
+<style id="v17-fix">/* V17: deterministic one-tap border fit; V12 AI layout retained; stamp vertical inner margin only slightly reduced. */</style>
+</body>
+<style>
+/* V12: 经典圆孔撕裂齿。只修改邮票纸边缘与内部白边。 */
+.stampPreviewAI,.stampPreview{
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20140%20100%22%3E%3Cmask%20id%3D%22m%22%3E%3Crect%20width%3D%22140%22%20height%3D%22100%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%225%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%225%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2255%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2255%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2285%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2285%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2295%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2295%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22105%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22105%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22115%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22115%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22125%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22125%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22135%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22135%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2215%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2215%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2235%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2235%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2245%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2245%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2255%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2255%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2265%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2265%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2275%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2275%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2285%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2285%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2295%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2295%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3C%2Fmask%3E%3Crect%20width%3D%22140%22%20height%3D%22100%22%20fill%3D%22white%22%20mask%3D%22url%28%23m%29%22%2F%3E%3C%2Fsvg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20140%20100%22%3E%3Cmask%20id%3D%22m%22%3E%3Crect%20width%3D%22140%22%20height%3D%22100%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%225%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%225%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2255%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2255%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2285%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2285%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2295%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2295%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22105%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22105%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22115%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22115%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22125%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22125%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22135%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22135%22%20cy%3D%22100%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2215%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2215%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2225%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2235%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2235%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2245%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2245%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2255%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2255%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2265%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2265%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2275%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2275%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2285%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2285%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2295%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%22140%22%20cy%3D%2295%22%20r%3D%222.2%22%20fill%3D%22black%22%2F%3E%3C%2Fmask%3E%3Crect%20width%3D%22140%22%20height%3D%22100%22%20fill%3D%22white%22%20mask%3D%22url%28%23m%29%22%2F%3E%3C%2Fsvg%3E");
+  -webkit-mask-size:100% 100%;
+  mask-size:100% 100%;
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+}
+</style>
+
+
+<style id="v41-stamp-render">
+/* One renderer for editor, AI preview, and exported stamp. */
+.cropFrame.stampEditing{background:#e9eef1!important;clip-path:none!important;overflow:visible!important;mask-image:none!important;-webkit-mask-image:none!important;border:0!important;box-shadow:none!important;filter:none!important}
+.cropFrame.stampEditing:after{display:none!important}
+.cropFrame.stampEditing .cropViewport{visibility:hidden!important}
+#editorStampCanvas{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none;object-fit:contain}
+.cropFrame.stampEditing #editorStampCanvas{display:block}
+.previewZone:has(.cropFrame.stampEditing){background:#e9eef1;padding:0;box-sizing:border-box;overflow:visible}
+.postcardPreview.stampZoomed{display:flex!important;align-items:center!important;justify-content:center!important;background:#e9eef1!important;padding:0!important}
+.postcardPreview.stampZoomed #postcardCanvas{display:block!important;width:100%!important;height:auto!important;max-height:100%!important;object-fit:contain!important}
+#editorBgCanvas{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none;object-fit:fill}
+.cropFrame:not(.stampEditing) #editorBgCanvas{display:block}
+.cropFrame:not(.stampEditing) .cropViewport{visibility:hidden}
+.cropFrame.stampEditing #editorStampCanvas{inset:0;left:0;top:0;transform:none;width:100%;height:100%;aspect-ratio:auto}
+.cropFrame.stampEditing{background:#e9eef1!important}
+</style>
+</html>
